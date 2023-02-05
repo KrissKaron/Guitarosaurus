@@ -1,24 +1,19 @@
 import requests as rq
 from bs4 import BeautifulSoup as bs
-import lxml
-import html5lib
 from webdriver_manager.chrome import ChromeDriverManager
 from selenium.webdriver.chrome.options import Options
 from selenium import webdriver
 from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.common.by import By
+from selenium.webdriver import ActionChains
 import os
 
-path = '/home/krisskaron/CODE/Guitarus/pics'
- 
-# BS4
-#source = rq.get('https://www.thomann.de/ro/chitare_electrice.html').text
-#soup = bs(source,'lxml')
+pics_folder_path = 'C:\\Users\\Cristian-Eduard\\Desktop\\CODE\\Guitarus\\pics'
  
 # SELENIUM
 options = Options()
 options.add_experimental_option("detach",True)
-# options.add_argument('--headless')
+options.add_argument('--headless')
 browser = webdriver.Chrome(ChromeDriverManager().install(),chrome_options=options)
 browser.get('https://www.thomann.de/ro/chitare_electrice.html')
  
@@ -51,6 +46,8 @@ def select_category(categ_title = show_categories()[1]):
     print('Showing the '+categ_title[categ_input]+' subcategory.\n')
     browser.implicitly_wait(5)
     browser.find_element(By.LINK_TEXT,categ_title[categ_input]).click()
+    chosen_categ = categ_title[categ_input]
+    return chosen_categ
 
 def pick_all_per_page():
     items = browser.find_elements(By.CLASS_NAME,'fx-product-list-entry')
@@ -68,6 +65,7 @@ def get_listed_items_links(vals):
     just_item_titles = []
     for i in vals:
         just_item_titles.append(i.split('\n'))
+    #print(just_item_titles,'\n\n') 
 
     #Get all manufacturers on the page
     manufacturers = []
@@ -95,25 +93,51 @@ def get_listed_items_links(vals):
     return manufacturers,models,listed_item,links
 
 def open_new_tabs(links,vals):
-    # picsName = []
-    # for val in vals[0]:
-    #     picsName[val] = vals + '.png'
-    
-    #Open links in new tabs
+    #Open links in new tabs \\
+    #switches to new tab    \\
+    #finds image            \\
+    #appends to img_src list\\
+    img_src = []
     for i,val in enumerate(links):
         print('\n\n',i,'\n',val,'\n\n')
         browser.execute_script("window.open();")
         browser.switch_to.window(browser.window_handles[i])
         browser.get(links[i])
         browser.find_element(By.CSS_SELECTOR,'body > div.thomann-page.thomann-page-ro.fx-page > div > div.thomann-content.thomann-content-module-prod.thomann-content-route-main > div > div > div.fx-container.fx-container--with-margin.fx-product-orderable.product-main-content.fx-content-product-grid__col > div > div.fx-grid__col.fx-col--12.fx-col--lg-8 > div.product-media-gallery.product-media-gallery--type-defaultimage > div.spotlight.js-product-media-gallery-spotlight.fx-media-zoom-gallery.fx-media-zoom-gallery--skin-inline.zgZoomGallery.DefaultImage > div > div > div > div.zgItem.DefaultImage.zgStateSeen > div > picture > img').click()
-        print('\n\n\n',browser.find_element(By.ID,'img').get_attribute('src'))
+        img_src.append(browser.find_element(By.CSS_SELECTOR,'body > div.thomann-page.thomann-page-ro.fx-page > div > div.thomann-content.thomann-content-module-prod.thomann-content-route-main > div > div > div.fx-container.fx-container--with-margin.fx-product-orderable.product-main-content.fx-content-product-grid__col > div > div.fx-grid__col.fx-col--12.fx-col--lg-8 > div.product-media-gallery.product-media-gallery--type-defaultimage > div.spotlight.js-product-media-gallery-spotlight.fx-media-zoom-gallery.fx-media-zoom-gallery--skin-inline.zgZoomGallery.DefaultImage > div > div > div > div.zgItem.DefaultImage.zgStateSeen > div > picture > img').get_attribute('src'))
+    print("************IMAGE SOURCE img_src IS:************ \n\n",img_src,'\n')
+    return img_src
+
+def download_pics(img_src,manufacturers,models,chosen_categ):
+    #Creates the location where the images get saved
+    new_fold_path = pics_folder_path+'\\'+chosen_categ
+    try:
+        os.mkdir(os.path.join(os.getcwd(),pics_folder_path))
+        os.mkdir(os.path.join(os.getcwd(),new_fold_path))
+    except:
+        pass
+    os.chdir(os.path.join(os.getcwd(),new_fold_path))
+
+    #Creates the image names
+    pic_name = []
+    for i,j in zip(manufacturers,models):
+        pic_name.append(i+' '+j)
+
+    #Write the images in the 'pics' folder
+    for i_src,pic in zip(img_src,pic_name):
+        with open(pic + '.jpg','wb') as f:
+            if pic:
+                pass
+            else:
+                f.write(rq.get(i_src).content)
+                print('Writing:\t',pic)
 
 
-if __name__ == '__main__':
-    cookiesPopup()
-    select_category()
-    _,vals,_ = pick_all_per_page()
-    _,_,_,links = get_listed_items_links(vals)
-    open_new_tabs(links,vals)
-    #download_pics(links)
+
+#TODO:
+# --- automate the creation of folders by subcategory
+# --- scrape ALL under selected subcateg.
+# --- check for duplicates 
+# --- MAYBE download all the photos of one given product + create a folder for each product
+
 
